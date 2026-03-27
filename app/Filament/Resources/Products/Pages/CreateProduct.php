@@ -29,4 +29,9 @@ class CreateProduct extends CreateRecord
             }
         }
     }
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['user_id'] = auth()->id(); // 현재 로그인한 유저 ID 강제 삽입
+        return $data;
+    }
 }

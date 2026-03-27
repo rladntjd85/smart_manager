@@ -14,7 +14,8 @@ class Product extends Model
 
     protected $fillable = [
         'name', 'category_id', 'raw_text', 'stock', 'price',
-        'summary', 'tags', 'image_path', 'image_match_status', 'image_match_message'
+        'summary', 'tags', 'image_path', 'image_match_status', 'image_match_message',
+        'user_id'
     ];
 
     /**

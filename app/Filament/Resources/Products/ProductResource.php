@@ -287,13 +287,14 @@ class ProductResource extends Resource
                                     ImageEntry::make('image_path')
                                         ->label('등록된 상세 이미지')
                                         ->disk('public')
-                                        ->defaultImageUrl('https://via.placeholder.com/400?text=No+Image+Found')
+                                        ->defaultImageUrl('https://placehold.jp/24/333333/ffffff/400x300.png?text=No%20Image%20Found')
                                         ->extraImgAttributes([
                                             'style' => 'width: 100%; height: auto; object-fit: contain;',
                                         ])
                                         ->extraAttributes([
                                             'style' => 'max-height: 600px; overflow-y: auto; border: 1px solid #333; padding: 5px; border-radius: 8px;',
                                             'class' => 'custom-image-scroll', // 필요시 커스텀 클래스 추가
+                                            'onerror' => "https://placehold.jp/24/333333/ffffff/400x300.png?text=No%20Image%20Found",
                                         ])
                                         ->action(
                                             Action::make('viewOriginalImage')
@@ -343,7 +344,10 @@ class ProductResource extends Resource
                     ->visibility('public')
                     ->imageSize(40) // 썸네일 크기 (픽셀 단위, 기본 40)
                     ->circular() // 원형으로 보여주고 싶다면 추가 (선택 사항)
-                    ->defaultImageUrl(asset('https://via.placeholder.com/400?text=No+Image+Found')),
+                    ->defaultImageUrl('https://placehold.jp/24/333333/ffffff/100x100.png?text=No%20Img')
+                    ->extraImgAttributes([
+                        'onerror' => "this.src='https://placehold.jp/24/333333/ffffff/100x100.png?text=Error'; this.onerror=null;",
+                    ]),
                 // 1. 상품명 표시
                 TextColumn::make('name')
                     ->label('상품명')
