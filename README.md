@@ -29,7 +29,7 @@
 
 ## 1. 프로젝트 개요
 <ul>
-  <li><b>개발 기간:</b> 2026.03.20 ~ 2026.03.27 (진행 중)</li>
+  <li><b>개발 기간:</b> 2026.03.25 ~ 2026.03.27 (진행 중)</li>
   <li><b>핵심 기술 스택:</b> Filament v5.4.1, Gemini 2.5 Flash Lite</li>
   <li><b>인프라 환경:</b> Google Cloud Run, Cloud SQL (MySQL 8.4 LTS)</li>
 </ul>
