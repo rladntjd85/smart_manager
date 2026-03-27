@@ -8,6 +8,7 @@ use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Products\Pages\ViewProduct;
 use App\Filament\Exports\ProductExporter;
 use App\Models\Product;
+use App\Filament\Imports\ProductImporter;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Actions\EditAction;
@@ -34,6 +35,8 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
 use Filament\Actions\ExportAction;
+use Filament\Actions\Imports\ImportColumn;
+use Filament\Actions\ImportAction;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -378,6 +381,11 @@ class ProductResource extends Resource
                 ExportAction::make()
                     ->exporter(ProductExporter::class)
                     ->label('엑셀 다운로드'),
+                ImportAction::make()
+                    ->importer(ProductImporter::class) // 위에서 가져온 임포터 클래스 연결
+                    ->label('엑셀 업로드')
+                    ->icon('heroicon-o-arrow-up-tray') // 아이콘 (선택 사항)
+                    ->color('primary') // 버튼 색상 (선택 사항)
             ])
             ->filters([
                 // 예: AI 분석 결과가 있는 것만 보기
