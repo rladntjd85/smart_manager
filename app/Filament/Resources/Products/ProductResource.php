@@ -31,8 +31,10 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 // ------------------------------------
@@ -96,8 +98,9 @@ class ProductResource extends Resource
                     FileUpload::make('image_path')
                         ->label('상품 상세 이미지 업로드')
                         ->image()
+                        ->disk('public')
                         ->directory('product-analysis')
-                        // 1. 임시 파일이 아닌 즉시 저장을 위해 livewire의 업로드 완료를 보장합니다.
+                        ->visibility('public')
                         ->live()
                         ->afterStateUpdated(function ($state, $set) {
                             // 파일이 선택/수정되면 이전 분석 결과를 초기화하거나 자동 로직을 태울 수 있습니다.
@@ -175,7 +178,9 @@ class ProductResource extends Resource
                                             // 3. [중요] 이미지 검수 상태는 분석할 때마다 무조건 업데이트해야 함
                                             $set('image_match_status', data_get($result, 'image_match_status', 'success'));
                                             $set('image_match_message', data_get($result, 'image_match_message'));
-                                            $set('raw_text', data_get($result, 'raw_text') ?? "이미지 분석을 통해 생성된 데이터입니다.");
+
+                                            $newRawText = data_get($result, 'summary') ?: data_get($result, 'name');
+                                            $set('raw_text', " [AI 이미지 분석 결과] \n" . $newRawText);
 
                                             Notification::make()->title('이미지 분석 및 검수 완료')->success()->send();
                                         } else {
@@ -281,7 +286,30 @@ class ProductResource extends Resource
                                 ->schema([
                                     ImageEntry::make('image_path')
                                         ->label('등록된 상세 이미지')
-                                        ->height(300),
+                                        ->disk('public')
+                                        ->defaultImageUrl('https://via.placeholder.com/400?text=No+Image+Found')
+                                        ->extraImgAttributes([
+                                            'style' => 'width: 100%; height: auto; object-fit: contain;',
+                                        ])
+                                        ->extraAttributes([
+                                            'style' => 'max-height: 600px; overflow-y: auto; border: 1px solid #333; padding: 5px; border-radius: 8px;',
+                                            'class' => 'custom-image-scroll', // 필요시 커스텀 클래스 추가
+                                        ])
+                                        ->action(
+                                            Action::make('viewOriginalImage')
+                                                ->label('원본 이미지 보기')
+                                                ->modalHeading('상세 원본 이미지')
+                                                ->modalContent(fn ($record) => new \Illuminate\Support\HtmlString("
+                                                    <div style='display: flex; justify-content: center; background-color: #111; padding: 20px; border-radius: 12px;'>
+                                                        <img src='" . asset('storage/' . $record->image_path) . "'
+                                                             style='max-width: 100%; height: auto; border-radius: 8px;'
+                                                             onerror=\"console.log('Final Attempt Path:', this.src);\">
+                                                    </div>
+                                                "))
+                                                ->modalSubmitAction(false)
+                                                ->modalCancelAction(false)
+                                                ->modalWidth('7xl')
+                                        ),
 
                                     // 3. 이미지 매칭 결과 표시
                                     TextEntry::make('image_match_status')
@@ -309,6 +337,13 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
+                ImageColumn::make('image_path')
+                    ->label('이미지')
+                    ->disk('public') // [필수] 조회/업로드와 동일한 디스크 설정
+                    ->visibility('public')
+                    ->imageSize(40) // 썸네일 크기 (픽셀 단위, 기본 40)
+                    ->circular() // 원형으로 보여주고 싶다면 추가 (선택 사항)
+                    ->defaultImageUrl(asset('https://via.placeholder.com/400?text=No+Image+Found')),
                 // 1. 상품명 표시
                 TextColumn::make('name')
                     ->label('상품명')

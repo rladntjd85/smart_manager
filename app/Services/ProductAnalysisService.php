@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Google_Client;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Request;
 
 class ProductAnalysisService
 {
@@ -31,6 +33,16 @@ class ProductAnalysisService
      */
     public function analyzeAndSave(string $rawText, ?string $imagePath = null)
     {
+        $ipAddress = request()->ip();
+        $throttleKey = 'vertex_ai_ip_limit_' . $ipAddress;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts = 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            throw new \Exception("보안 및 비용 절감을 위해 동일 IP에서의 요청을 제한합니다. {$seconds}초 후 다시 시도해 주세요.");
+        }
+
+        RateLimiter::hit($throttleKey, 60); // 60초간 기록 유지
+
         // 1. 캐시 체크 (이미지 유무에 따라 키 분리)
         $contentHash = md5(trim($rawText) . ($imagePath ? md5_file($imagePath) : ''));
         $cacheKey = "product_analysis_v3_{$contentHash}";
@@ -158,6 +170,6 @@ class ProductAnalysisService
 
     public function analyzeImage(string $imagePath)
     {
-        return $this->analyzeAndSave(rawText: "이미지 분석 요청", imagePath: $imagePath);
+        return $this->analyzeAndSave(rawText: "이미지 분석 결과", imagePath: $imagePath);
     }
 }
