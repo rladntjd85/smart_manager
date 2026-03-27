@@ -6,6 +6,7 @@ use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Products\Pages\ViewProduct;
+use App\Filament\Exports\ProductExporter;
 use App\Models\Product;
 use BackedEnum;
 use Filament\Actions\ViewAction;
@@ -32,6 +33,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
+use Filament\Actions\ExportAction;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -371,6 +373,11 @@ class ProductResource extends Resource
                     ->label('등록일')
                     ->dateTime('Y-m-d H:i:s')
                     ->sortable(),
+            ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(ProductExporter::class)
+                    ->label('엑셀 다운로드'),
             ])
             ->filters([
                 // 예: AI 분석 결과가 있는 것만 보기
