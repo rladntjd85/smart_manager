@@ -377,6 +377,7 @@ class ProductResource extends Resource
                     ->dateTime('Y-m-d H:i:s')
                     ->sortable(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->headerActions([
                 ExportAction::make()
                     ->exporter(ProductExporter::class)
@@ -437,27 +438,21 @@ class ProductResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $userId = auth()->id();
-        $search = request()->query('tableSearch') ?? request()->query('search'); // 검색어 추출
-        $keyword = $search ?? 'all';
+        // 1. 부모 클래스의 쿼리를 가져옵니다.
+        // 만약 Policy에서 viewAny를 true로 했다면 여기서 모든 데이터가 와야 합니다.
+        $query = parent::getEloquentQuery();
 
-        // 1. 캐시 키 생성
-        $cacheKey = "user_{$userId}_search_" . md5($keyword);
+        // 2. 만약 모델에 Global Scope(상태 필터 등)가 걸려 있다면 강제로 해제합니다.
+        // $query->withoutGlobalScopes();
 
-        // 2. Redis에서 해당 검색어에 대한 상품 ID 리스트를 가져오거나 저장 (60초간)
-        $productIds = Cache::remember($cacheKey, 60, function () use ($userId, $search) {
-            $query = parent::getEloquentQuery()->where('user_id', $userId);
+        // 3. 검색어가 있다면 검색 조건만 추가합니다.
+        $search = request()->query('tableSearch') ?? request()->query('search');
+        if ($search) {
+            $query->where('name', 'like', "%{$search}%");
+        }
 
-            if ($search) {
-                $query->where('name', 'like', "%{$search}%");
-            }
-
-            // ID만 뽑아서 배열로 저장 (DB 부하 감소)
-            return $query->pluck('id')->toArray();
-        });
-
-        // 3. 캐싱된 ID들에 해당하는 상품들만 반환
-        return parent::getEloquentQuery()->whereIn('id', $productIds);
+        // 4. 캐시 없이 즉시 반환하여 DB 데이터를 실시간으로 확인합니다.
+        return $query;
     }
 
     public static function getRecordRouteBindingEloquentQuery(): Builder

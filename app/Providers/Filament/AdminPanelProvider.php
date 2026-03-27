@@ -28,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('')
             ->login()
+            ->brandName('스마트 매니저')
             ->registration()
             ->colors([
                 'primary' => Color::Amber,

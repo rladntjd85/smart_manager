@@ -36,4 +36,12 @@ class Product extends Model
         // ProductSpec 모델이 존재한다고 가정합니다.
         return $this->hasMany(ProductSpec::class);
     }
+
+    protected static function booted()
+    {
+        static::deleting(function ($product) {
+            // 상품 삭제 시 자식 테이블 데이터도 함께 삭제 (Cascading)
+            $product->specs()->delete();
+        });
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Http\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,9 +21,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // 로컬 환경이 아닐 때(구글 서버일 때) HTTPS를 강제합니다.
-        if (app()->environment('production') || config('app.env') === 'production') {
-//            URL::forceScheme('https');
+        config(['database.connections.mysql.timezone' => '+09:00']);
+
+        date_default_timezone_set('Asia/Seoul');
+
+        // 1. 모든 URL 생성을 HTTPS로 강제 (서명 일치를 위해 필수)
+        \Illuminate\Support\Facades\URL::forceScheme('https');
+
+        // 2. 프록시 헤더 신뢰 설정 (401 방지 핵심)
+        if (app()->environment('production')) {
+            \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
         }
     }
 }
