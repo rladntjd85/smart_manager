@@ -157,17 +157,6 @@ class ProductAnalysisService
         return json_decode($text, true);
     }
 
-    private function getGeminiMimeType($path)
-    {
-        $mime = mime_content_type($path);
-        return match ($mime) {
-            'image/png' => MimeType::IMAGE_PNG,
-            'image/webp' => MimeType::IMAGE_WEBP,
-            'image/heic', 'image/heif' => MimeType::IMAGE_HEIC,
-            default => MimeType::IMAGE_JPEG,
-        };
-    }
-
     public function analyzeImage(string $imagePath)
     {
         return $this->analyzeAndSave(rawText: "이미지 분석 결과", imagePath: $imagePath);

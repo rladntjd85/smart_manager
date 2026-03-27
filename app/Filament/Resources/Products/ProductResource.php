@@ -24,11 +24,12 @@ use Filament\Infolists\Components\ImageEntry;
 use Filament\Support\Enums\FontWeight;
 use Filament\Infolists\Components\TextEntry;
 
-// 입력 필드 컴포넌트 (vendor/filament/forms 에 있음)
+use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
@@ -37,6 +38,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 // ------------------------------------
 use Filament\Notifications\Notification;
 
@@ -369,7 +372,30 @@ class ProductResource extends Resource
                     ->dateTime('Y-m-d H:i:s')
                     ->sortable(),
             ])
-            ->filters([ /* ... */ ])
+            ->filters([
+                // 예: AI 분석 결과가 있는 것만 보기
+                Tables\Filters\TernaryFilter::make('has_analysis')
+                    ->label('AI 분석 여부')
+                    ->placeholder('전체')
+                    ->trueLabel('분석 완료')
+                    ->falseLabel('미분석')
+                    ->queries(
+                        true: fn ($query) => $query->whereNotNull('raw_text'),
+                        false: fn ($query) => $query->whereNull('raw_text'),
+                    ),
+
+                // 예: 등록일자 범위 필터
+                Tables\Filters\Filter::make('created_at')
+                    ->form([
+                        Forms\Components\DatePicker::make('created_from')->label('시작일'),
+                        Forms\Components\DatePicker::make('created_until')->label('종료일'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['created_from'], fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
+                            ->when($data['created_until'], fn ($query, $date) => $query->whereDate('created_at', '<=', $date));
+                    })
+            ])
             ->actions([
                 ViewAction::make(),
                 EditAction::make(),
@@ -392,6 +418,31 @@ class ProductResource extends Resource
             'view' => ViewProduct::route('/{record}'),
             'edit' => EditProduct::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $userId = auth()->id();
+        $search = request()->query('tableSearch') ?? request()->query('search'); // 검색어 추출
+        $keyword = $search ?? 'all';
+
+        // 1. 캐시 키 생성
+        $cacheKey = "user_{$userId}_search_" . md5($keyword);
+
+        // 2. Redis에서 해당 검색어에 대한 상품 ID 리스트를 가져오거나 저장 (60초간)
+        $productIds = Cache::remember($cacheKey, 60, function () use ($userId, $search) {
+            $query = parent::getEloquentQuery()->where('user_id', $userId);
+
+            if ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            }
+
+            // ID만 뽑아서 배열로 저장 (DB 부하 감소)
+            return $query->pluck('id')->toArray();
+        });
+
+        // 3. 캐싱된 ID들에 해당하는 상품들만 반환
+        return parent::getEloquentQuery()->whereIn('id', $productIds);
     }
 
     public static function getRecordRouteBindingEloquentQuery(): Builder
