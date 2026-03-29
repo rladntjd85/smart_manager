@@ -32,6 +32,7 @@ class EditProduct extends EditRecord
 
     protected function getRedirectUrl(): string
     {
-        return $this->getResource()::getUrl('index');
+        // 수정 완료 후 해당 레코드의 'view' 페이지로 이동
+        return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
     }
 }

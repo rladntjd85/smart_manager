@@ -102,10 +102,10 @@ class ProductResource extends Resource
 
             Section::make('AI 상품 이미지 분석')
                 ->schema([
-                    // ProductResource.php 내 FileUpload 부분
                     FileUpload::make('image_path')
                         ->label('상품 상세 이미지 업로드')
                         ->image()
+//                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'])
                         ->disk('gcs')
                         ->directory('product-analysis')
                         ->visibility('public')
@@ -133,15 +133,26 @@ class ProductResource extends Resource
                                     if ($imagePath instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
                                         $fullPath = $imagePath->getRealPath();
                                     } else {
-                                        // 이미 저장된 파일인 경우 (Edit 모드 등)
-                                        $fullPath = storage_path('app/public/' . (is_array($imagePath) ? array_key_first($imagePath) : $imagePath));
+                                        // 이미 저장된 파일인 경우 GCS에서 임시로 가져옴
+                                        $disk = \Illuminate\Support\Facades\Storage::disk('gcs');
+                                        try {
+                                            if ($disk->exists($imagePath)) {
+                                                $tempPath = tempnam(sys_get_temp_dir(), 'gcs_');
+                                                file_put_contents($tempPath, $disk->get($imagePath));
+                                                $fullPath = $tempPath;
+                                            } else {
+                                                throw new \Exception('파일 없음');
+                                            }
+                                        } catch (\Exception $e) {
+                                            \Log::error('GCS 에러: ' . $e->getMessage());
+                                            Notification::make()->title('GCS 오류')->danger()->send();
+                                            return;
+                                        }
                                     }
 
                                     // [중요] 파일이 물리적으로 존재하는지 한 번 더 체크
                                     if (!file_exists($fullPath)) {
-                                        \Illuminate\Support\Facades\Log::error("파일 물리 경로 확인 실패: " . $fullPath);
-                                        Notification::make()->title('파일 로드 실패')->body('임시 파일이 삭제되었을 수 있습니다. 다시 업로드해 주세요.')->danger()->send();
-                                        return;
+                                        throw new \Exception('파일 없음');
                                     }
 
                                     $cacheKey = 'prod_analysis_' . md5_file($fullPath);
@@ -294,7 +305,7 @@ class ProductResource extends Resource
                                 ->schema([
                                     ImageEntry::make('image_path')
                                         ->label('등록된 상세 이미지')
-                                        ->disk('public')
+                                        ->disk('gcs')
                                         ->defaultImageUrl('https://placehold.jp/24/333333/ffffff/400x300.png?text=No%20Image%20Found')
                                         ->extraImgAttributes([
                                             'style' => 'width: 100%; height: auto; object-fit: contain;',
@@ -308,13 +319,18 @@ class ProductResource extends Resource
                                             Action::make('viewOriginalImage')
                                                 ->label('원본 이미지 보기')
                                                 ->modalHeading('상세 원본 이미지')
-                                                ->modalContent(fn ($record) => new \Illuminate\Support\HtmlString("
-                                                    <div style='display: flex; justify-content: center; background-color: #111; padding: 20px; border-radius: 12px;'>
-                                                        <img src='" . asset('storage/' . $record->image_path) . "'
-                                                             style='max-width: 100%; height: auto; border-radius: 8px;'
-                                                             onerror=\"console.log('Final Attempt Path:', this.src);\">
-                                                    </div>
-                                                "))
+                                                ->modalContent(function ($record) {
+                                                    // 이미지가 존재하면 GCS URL을, 없으면 대체(No Image) URL을 할당하여 Null 에러를 방지합니다.
+                                                    $imageUrl = $record->image_path
+                                                        ? \Illuminate\Support\Facades\Storage::disk('gcs')->url($record->image_path)
+                                                        : 'https://placehold.jp/24/333333/ffffff/400x300.png?text=No%20Image%20Found';
+
+                                                    return new \Illuminate\Support\HtmlString("
+                                                        <div style='text-align: center;'>
+                                                            <img src='{$imageUrl}' style='max-width: 100%; height: auto; border-radius: 8px;'>
+                                                        </div>
+                                                    ");
+                                                })
                                                 ->modalSubmitAction(false)
                                                 ->modalCancelAction(false)
                                                 ->modalWidth('7xl')
@@ -348,7 +364,7 @@ class ProductResource extends Resource
             ->columns([
                 ImageColumn::make('image_path')
                     ->label('이미지')
-                    ->disk('public') // [필수] 조회/업로드와 동일한 디스크 설정
+                    ->disk('gcs') // [필수] 조회/업로드와 동일한 디스크 설정
                     ->visibility('public')
                     ->imageSize(40) // 썸네일 크기 (픽셀 단위, 기본 40)
                     ->circular() // 원형으로 보여주고 싶다면 추가 (선택 사항)
