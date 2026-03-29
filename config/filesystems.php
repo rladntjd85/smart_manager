@@ -77,4 +77,14 @@ return [
         public_path('storage') => storage_path('app/public'),
     ],
 
+    'gcs' => [
+        'driver' => 'gcs',
+        'project_id' => 'precise-victory-384401',
+        'bucket' => 'smart-manager-bucket',
+        'path_prefix' => '',
+        'storage_api_uri' => null,
+        'visibility' => 'public',
+        'throw' => false,
+    ],
+
 ];

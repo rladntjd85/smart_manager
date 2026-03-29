@@ -106,7 +106,7 @@ class ProductResource extends Resource
                     FileUpload::make('image_path')
                         ->label('상품 상세 이미지 업로드')
                         ->image()
-                        ->disk('public')
+                        ->disk('gcs')
                         ->directory('product-analysis')
                         ->visibility('public')
                         ->live()
@@ -370,6 +370,13 @@ class ProductResource extends Resource
                 TextColumn::make('stock')
                     ->label('재고')
                     ->numeric(),
+
+                // [추가] 검색 키워드(SEO) 컬럼
+                TextColumn::make('tags')
+                    ->label('검색 키워드')
+                    ->badge()
+                    ->searchable()
+                    ->separator(','),
 
                 // 4. 생성일 표시 (한국 시간 확인용)
                 TextColumn::make('created_at')
