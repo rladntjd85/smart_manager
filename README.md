@@ -1,5 +1,9 @@
 <h1 align="center"> Smart Manager · Gemini 2.5 AI 기반 커머스 운영 시스템 </h1>
-
+<p align="center">
+  <a href="https://smart-manager-server-154955176179.asia-northeast3.run.app/products" target="_blank">
+    <img src="https://img.shields.io/badge/Live_Demo-방문하기-brightgreen?style=for-the-badge&logo=googlecloud" />
+  </a>
+</p>
 <p align="center">
   <img src="https://img.shields.io/badge/PHP-8.3-777BB4?logo=php" />
   <img src="https://img.shields.io/badge/Laravel-11.x-FF2D20?logo=laravel" />
