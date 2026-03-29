@@ -1,5 +1,9 @@
 <h1 align="center"> Smart Manager · Gemini 2.5 AI 기반 커머스 운영 시스템 </h1>
-
+<p align="center">
+  <a href="https://smart-manager-server-154955176179.asia-northeast3.run.app/products" target="_blank">
+    <img src="https://img.shields.io/badge/Live_Demo-방문하기-brightgreen?style=for-the-badge&logo=googlecloud" />
+  </a>
+</p>
 <p align="center">
   <img src="https://img.shields.io/badge/PHP-8.3-777BB4?logo=php" />
   <img src="https://img.shields.io/badge/Laravel-11.x-FF2D20?logo=laravel" />
@@ -29,6 +33,8 @@
 
 ## 1. 프로젝트 개요
 <ul>
+  <li><b>사이트 주소:</b> <a href="https://smart-manager-server-154955176179.asia-northeast3.run.app">https://smart-manager-server-154955176179.asia-northeast3.run.app/</a></li>
+  <li><b>테스트 계정:</b> guest@gmail.com / guest1234 </li>
   <li><b>개발 기간:</b> 2026.03.25 ~ 2026.03.27 (진행 중)</li>
   <li><b>핵심 기술 스택:</b> Filament v5.4.1, Gemini 2.5 Flash Lite</li>
   <li><b>인프라 환경:</b> Google Cloud Run, Cloud SQL (MySQL 8.4 LTS)</li>
