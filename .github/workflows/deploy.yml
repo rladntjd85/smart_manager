@@ -3,6 +3,12 @@ name: Deploy to Cloud Run
 on:
   push:
     branches: [ "main" ] # main 브랜치에 푸시될 때 실행
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - 'LICENSE'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
 
 env:
   SERVICE_NAME: smart-manager-server
