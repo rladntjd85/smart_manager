@@ -51,6 +51,7 @@ jobs:
             ASSET_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app
             GOOGLE_CLOUD_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
             GOOGLE_CLOUD_LOCATION=us-central1
+            REGION=${{ env.REGION }}
             FILESYSTEM_DISK=gcs
             GCP_STORAGE_BUCKET=smart-manager-bucket
             DB_CONNECTION=mysql
