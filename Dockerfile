@@ -65,4 +65,5 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
 # 11. 포트 설정 및 실행
 EXPOSE 8080
 
-CMD php-fpm -D && nginx -g "daemon off;"
+# PHP-FPM을 백그라운드로 확실히 띄우고, 2초 쉬었다가 Nginx를 띄우기
+CMD php-fpm -D && sleep 2 && nginx -g "daemon off;"
