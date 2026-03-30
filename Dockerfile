@@ -57,7 +57,8 @@ RUN php artisan storage:link \
 
 # 10. [핵심] 실행 스크립트 복사 및 권한 부여
 # - 윈도우 환경에서의 권한 문제를 Docker 빌드 단계에서 강제로 해결합니다.
-COPY docker/docker-entrypoint.sh /usr/local/bin/
+COPY docker-entrypoint.sh /usr/local/bin/
+
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh
 
