@@ -1,0 +1,67 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ "main" ] # main 브랜치에 푸시될 때 실행
+
+env:
+  SERVICE_NAME: smart-manager-server
+  REGION: asia-northeast3
+  IMAGE_NAME: asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smart-repo/smart-manager-server
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write' # WIF 인증을 위해 필수
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Google Cloud 인증 (WIF 방식)
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # 2. Docker 빌드 및 Artifact Registry 푸시
+      - name: Authorize Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build and Push Container
+        run: |-
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # 3. Cloud Run 배포
+      - name: Deploy to Cloud Run
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          # Cloud SQL 연결
+          add_cloudsql_instances: ${{ secrets.GCP_DB_INSTANCE }}
+          # 일반 환경 변수 주입
+          env_vars: |-
+            APP_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app
+            ASSET_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app
+            GOOGLE_CLOUD_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+            GOOGLE_CLOUD_LOCATION=us-central1
+            FILESYSTEM_DISK=gcs
+            GCP_STORAGE_BUCKET=smart-manager-bucket
+            DB_CONNECTION=mysql
+            DB_SOCKET=/cloudsql/${{ secrets.GCP_DB_INSTANCE }}
+            DB_DATABASE=smart_manager
+            LOG_CHANNEL=stderr
+            LOG_LEVEL=debug
+            APP_DEBUG=true
+          # GCP Secret Manager 연동 (가장 안전함)
+          secrets: |-
+            APP_KEY=APP_KEY:latest
+            DB_PASSWORD=DB_PASSWORD:latest
+            DB_USERNAME=DB_USERNAME:latest
+            GEMINI_API_KEY=GEMINI_API_KEY:latest

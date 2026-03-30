@@ -34,7 +34,8 @@ class ProductAnalysisService
     public function analyzeAndSave(string $rawText, ?string $imagePath = null)
     {
         $ipAddress = request()->ip();
-        $throttleKey = 'vertex_ai_ip_limit_' . $ipAddress;
+        $mode = $imagePath ? 'image' : 'text';
+        $throttleKey = "vertex_ai_{$mode}_limit_" . $ipAddress;
 
         if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts = 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
@@ -103,6 +104,11 @@ class ProductAnalysisService
                     ]
                 ]);
 
+//                dd([
+//                    'status' => $response->status(),
+//                    'body' => $response->body(),
+//                ]);
+
                 if ($response->failed()) {
                     throw new \Exception('Vertex AI 호출 실패: ' . $response->body());
                 }
@@ -111,11 +117,30 @@ class ProductAnalysisService
                 $responseData = $response->json();
                 $responseText = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
+                Log::info('Gemini text', [
+                    'text' => $responseText
+                ]);
+
                 $data = $this->parseJsonResponse($responseText);
 
-                if (!$data || !isset($data['name'])) {
-                    continue;
-                }
+                Log::info('Parsed data', [
+                    'data' => $data
+                ]);
+
+                if (!is_array($data)) continue;
+
+                $data = array_merge([
+                    'name' => null,
+                    'category' => '미분류',
+                    'price' => 0,
+                    'summary' => '',
+                    'tags' => [],
+                    'specs' => [],
+                    'image_match' => [
+                        'status' => 'success',
+                        'message' => null
+                    ],
+                ], $data);
 
                 // 4. 데이터 정규화 (카테고리 처리)
                 $categoryName = trim($data['category'] ?? '미분류');
@@ -151,10 +176,16 @@ class ProductAnalysisService
     private function parseJsonResponse($text)
     {
         $text = trim(preg_replace('/```json|```/', '', $text));
-        if (preg_match('/\{.*\}/s', $text, $matches)) {
-            return json_decode($matches[0], true);
+
+        $start = strpos($text, '{');
+        $end = strrpos($text, '}');
+
+        if ($start !== false && $end !== false) {
+            $json = substr($text, $start, $end - $start + 1);
+            return json_decode($json, true);
         }
-        return json_decode($text, true);
+
+        return null;
     }
 
     public function analyzeImage(string $imagePath)

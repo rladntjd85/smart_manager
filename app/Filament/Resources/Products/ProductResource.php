@@ -45,6 +45,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 // ------------------------------------
 use Filament\Notifications\Notification;
 
@@ -81,7 +82,7 @@ class ProductResource extends Resource
                                     $result = $service->analyzeAndSave($rawContent);
 
                                     if ($result) {
-                                        $set('name', $result['name']);
+                                        $set('name', $get('name') ?: $result['name']);
                                         $set('category_id', $result['category_id']);
                                         $set('price', $result['price'] ?? 0);
                                         $set('summary', $result['summary'] ?? '');
@@ -105,118 +106,81 @@ class ProductResource extends Resource
                     FileUpload::make('image_path')
                         ->label('상품 상세 이미지 업로드')
                         ->image()
-//                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'])
                         ->disk('gcs')
                         ->directory('product-analysis')
                         ->visibility('public')
                         ->live()
-                        ->afterStateUpdated(function ($state, $set) {
-                            // 파일이 선택/수정되면 이전 분석 결과를 초기화하거나 자동 로직을 태울 수 있습니다.
-                        })
                         ->hintAction(
                             Action::make('analyzeImage')
                                 ->label('이미지 분석하기')
                                 ->icon('heroicon-m-photo')
                                 ->color('warning')
-                                ->modalHidden(fn ($get) => !$get('image_path'))
-                                // 분석 중 버튼 비활성화 및 로딩 표시
                                 ->requiresConfirmation()
-                                ->action(function ($get, $set, $component) { // $component 추가
+                                ->action(function ($get, $set) {
                                     $imagePath = $get('image_path');
-
                                     if (!$imagePath) {
-                                        Notification::make()->title('이미지가 감지되지 않았습니다.')->warning()->send();
+                                        Notification::make()->title('이미지가 없습니다.')->warning()->send();
                                         return;
                                     }
 
-                                    // 1. Livewire 임시 파일 객체에서 직접 경로 추출 시도
+                                    $fullPath = null;
+                                    $tempPath = null;
+
+                                    // 1. GCS 또는 임시 파일 처리 (배열 구조 완벽 대응)
                                     if ($imagePath instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
                                         $fullPath = $imagePath->getRealPath();
                                     } else {
-                                        // 이미 저장된 파일인 경우 GCS에서 임시로 가져옴
+                                        // Filament 특유의 배열 구조에서 실제 파일 경로 추출
+//                                        $actualPath = is_array($imagePath) ? (array_key_first($imagePath) ?: reset($imagePath)) : $imagePath;
+                                        if (is_array($imagePath)) {
+                                            $actualPath = collect($imagePath)->first();
+                                        } else {
+                                            $actualPath = $imagePath;
+                                        }
+
                                         $disk = \Illuminate\Support\Facades\Storage::disk('gcs');
-                                        try {
-                                            if ($disk->exists($imagePath)) {
-                                                $tempPath = tempnam(sys_get_temp_dir(), 'gcs_');
-                                                file_put_contents($tempPath, $disk->get($imagePath));
-                                                $fullPath = $tempPath;
-                                            } else {
-                                                throw new \Exception('파일 없음');
-                                            }
-                                        } catch (\Exception $e) {
-                                            \Log::error('GCS 에러: ' . $e->getMessage());
-                                            Notification::make()->title('GCS 오류')->danger()->send();
-                                            return;
+                                        if ($actualPath && $disk->exists($actualPath)) {
+                                            $tempPath = tempnam(sys_get_temp_dir(), 'gcs_ai_');
+                                            stream_copy_to_stream(
+                                                $disk->readStream($actualPath),
+                                                fopen($tempPath, 'w')
+                                            );
+                                            $fullPath = $tempPath;
                                         }
                                     }
 
-                                    // [중요] 파일이 물리적으로 존재하는지 한 번 더 체크
-                                    if (!file_exists($fullPath)) {
-                                        throw new \Exception('파일 없음');
+                                    if (!$fullPath || !file_exists($fullPath)) {
+                                        Notification::make()->title('파일 준비 실패')->danger()->send();
+                                        return;
                                     }
-
-                                    $cacheKey = 'prod_analysis_' . md5_file($fullPath);
 
                                     try {
-                                        // [수정] 캐시에서 가져오되, 데이터가 확실히 있는지 체크
-                                        $result = \Illuminate\Support\Facades\Cache::get($cacheKey);
-
-                                        if (!$result) {
-                                            \Illuminate\Support\Facades\Log::info("캐시 없음 - AI 분석 시작");
-
-                                            // 이미지 리사이징 (v2/v3 대응)
-                                            if (class_exists('\Intervention\Image\ImageManagerStatic')) {
-                                                \Intervention\Image\ImageManagerStatic::make($fullPath)->resize(600, null, function ($c) { $c->aspectRatio(); })->save();
-                                            } elseif (class_exists('\Intervention\Image\ImageManager')) {
-                                                $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-                                                $manager->read($fullPath)->scale(width: 600)->save($fullPath);
-                                            }
-
-                                            // 서비스 호출
-                                            $result = app(ProductAnalysisService::class)->analyzeImage($fullPath);
-
-                                            // [체크 3] 서비스 결과값 로그로 찍어보기
-                                            \Illuminate\Support\Facades\Log::info("AI 응답 데이터: ", (array) $result);
-
-                                            if ($result) {
-                                                \Illuminate\Support\Facades\Cache::put($cacheKey, $result, now()->addDays(30));
-                                            }
-                                        } else {
-                                            \Illuminate\Support\Facades\Log::info("캐시 데이터 적중!");
-                                        }
+                                        // 2. 서비스 호출 및 데이터 주입
+                                        $result = app(ProductAnalysisService::class)->analyzeImage($fullPath);
 
                                         if ($result) {
                                             $set('name', $get('name') ?: data_get($result, 'name'));
-                                            $set('price', $get('price') ?: data_get($result, 'price', 0));
+                                            $set('price', $get('price') ?: data_get($result, 'price'));
                                             $set('category_id', $get('category_id') ?: data_get($result, 'category_id'));
-
-                                            $set('summary', $get('summary') ?: data_get($result, 'summary'));
-                                            $set('tags', $get('tags') ?: data_get($result, 'tags', []));
-                                            $set('temp_specs', $get('temp_specs') ?: json_encode(data_get($result, 'specs', [])));
-
-                                            // 3. [중요] 이미지 검수 상태는 분석할 때마다 무조건 업데이트해야 함
+                                            $set('summary', data_get($result, 'summary'));
+                                            $set('tags', data_get($result, 'tags', []));
+                                            $set('temp_specs', json_encode(data_get($result, 'specs', [])));
                                             $set('image_match_status', data_get($result, 'image_match_status', 'success'));
                                             $set('image_match_message', data_get($result, 'image_match_message'));
+                                            $set('raw_text', "[AI 이미지 분석]\n" . data_get($result, 'summary'));
 
-                                            $newRawText = data_get($result, 'summary') ?: data_get($result, 'name');
-                                            $set('raw_text', " [AI 이미지 분석 결과] \n" . $newRawText);
-
-                                            Notification::make()->title('이미지 분석 및 검수 완료')->success()->send();
+                                            Notification::make()->title('이미지 분석 성공')->success()->send();
                                         } else {
                                             Notification::make()->title('분석 결과가 비어있습니다.')->warning()->send();
                                         }
-
                                     } catch (\Exception $e) {
-                                        // 할당량 초과 파싱 로직 유지
-                                        if (str_contains(strtolower($e->getMessage()), 'quota')) {
-                                            preg_match('/retry in ([\d\.]+)s/', $e->getMessage(), $matches);
-                                            $seconds = isset($matches[1]) ? ceil((float)$matches[1]) : 60;
-                                            Notification::make()->title('AI 한도 초과')->body("약 {$seconds}초 후 재시도")->danger()->send();
-                                            return;
+                                        Log::error("Resource 분석 에러: " . $e->getMessage());
+                                        Notification::make()->title('에러 발생')->body($e->getMessage())->danger()->send();
+                                    } finally {
+                                        // 임시 파일 즉시 삭제
+                                        if ($tempPath && file_exists($tempPath)) {
+                                            unlink($tempPath);
                                         }
-
-                                        \Illuminate\Support\Facades\Log::error("AI 분석 예외: " . $e->getMessage());
-                                        Notification::make()->title('오류 발생')->body($e->getMessage())->danger()->send();
                                     }
                                 })
                         ),
@@ -340,17 +304,17 @@ class ProductResource extends Resource
                                     TextEntry::make('image_match_status')
                                         ->label('이미지 정합성 상태')
                                         ->badge()
-                                        ->color(fn (string $state): string => match ($state) {
+                                        ->color(fn(string $state): string => match ($state) {
                                             'success' => 'success',
                                             'warning' => 'warning',
-                                            'fail'    => 'danger',
-                                            default   => 'gray',
+                                            'fail' => 'danger',
+                                            default => 'gray',
                                         })
-                                        ->formatStateUsing(fn (?string $state): string => strtoupper($state ?? 'PENDING')),
+                                        ->formatStateUsing(fn(?string $state): string => strtoupper($state ?? 'PENDING')),
 
                                     TextEntry::make('image_match_message')
                                         ->label('검수 상세 메시지')
-                                        ->hidden(fn ($record) => $record->image_match_status === 'success')
+                                        ->hidden(fn($record) => $record->image_match_status === 'success')
                                         ->color('danger'),
                                 ]),
                         ]),
@@ -419,8 +383,8 @@ class ProductResource extends Resource
                     ->trueLabel('분석 완료')
                     ->falseLabel('미분석')
                     ->queries(
-                        true: fn ($query) => $query->whereNotNull('raw_text'),
-                        false: fn ($query) => $query->whereNull('raw_text'),
+                        true: fn($query) => $query->whereNotNull('raw_text'),
+                        false: fn($query) => $query->whereNull('raw_text'),
                     ),
 
                 // 예: 등록일자 범위 필터
@@ -431,8 +395,8 @@ class ProductResource extends Resource
                     ])
                     ->query(function ($query, array $data) {
                         return $query
-                            ->when($data['created_from'], fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
-                            ->when($data['created_until'], fn ($query, $date) => $query->whereDate('created_at', '<=', $date));
+                            ->when($data['created_from'], fn($query, $date) => $query->whereDate('created_at', '>=', $date))
+                            ->when($data['created_until'], fn($query, $date) => $query->whereDate('created_at', '<=', $date));
                     })
             ])
             ->actions([
