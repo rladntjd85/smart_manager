@@ -44,7 +44,7 @@ RUN echo "upload_max_filesize=20M" > /usr/local/etc/php/conf.d/uploads.ini \
 
 # 7. Nginx 설정 파일 복사
 # - 프로젝트 루트에 nginx.conf가 있어야 합니다.
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY docker/nginx.conf /etc/nginx/nginx.conf
 
 # 8. 의존성 설치 (Production 최적화)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
