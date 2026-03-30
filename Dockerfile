@@ -64,4 +64,5 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
 
 # 11. 포트 설정 및 실행
 EXPOSE 8080
-ENTRYPOINT ["docker-entrypoint.sh"]
+
+CMD php-fpm -D && nginx -g "daemon off;"
