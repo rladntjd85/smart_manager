@@ -11,6 +11,8 @@
   <img src="https://img.shields.io/badge/MySQL-8.4_LTS-4479A1?logo=mysql" />
   <img src="https://img.shields.io/badge/AI-Gemini_2.5_Flash_Lite-4285F4?logo=googlegemini" />
   <img src="https://img.shields.io/badge/GCP-Cloud_Run-4285F4?logo=googlecloud" />
+  <img src="https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/CI/CD-GitHub_Actions-2088FF?logo=githubactions&logoColor=white" />
 </p>
 
 <p align="center">
@@ -35,7 +37,7 @@
 <ul>
   <li><b>사이트 주소:</b> <a href="https://smart-manager-server-154955176179.asia-northeast3.run.app">https://smart-manager-server-154955176179.asia-northeast3.run.app/</a></li>
   <li><b>테스트 계정:</b> guest@gmail.com / guest1234 </li>
-  <li><b>개발 기간:</b> 2026.03.25 ~ 2026.03.27 (진행 중)</li>
+  <li><b>개발 기간:</b> 2026.03.25 ~ 2026.03.31 (진행 중)</li>
   <li><b>핵심 기술 스택:</b> Filament v5.4.1, Gemini 2.5 Flash Lite</li>
   <li><b>인프라 환경:</b> Google Cloud Run, Cloud SQL (MySQL 8.4 LTS)</li>
 </ul>
@@ -45,9 +47,13 @@
 ## 2. 아키텍처 및 기술 스택
 <ul>
   <li><b>Backend:</b> PHP 8.3, Laravel 11.x (최신 기능을 활용한 견고한 아키텍처)</li>
+  <li><b>AI Engine:</b> Gemini 2.5 Flash Lite (멀티모달 이미징 분석 및 JSON 구조화)</li>
   <li><b>Admin UI:</b> Filament v5 (TALL Stack 기반의 고속 어드민 구축)</li>
   <li><b>Database:</b> MySQL 8.4 LTS (AI 추출 데이터를 위한 JSON Native 지원 활용)</li>
-  <li><b>Infrastructure:</b> Docker, Google Cloud Run, Artifact Registry</li>
+  <li><b>Containerization:</b> Docker Multi-stage Build (Node.js 빌드층과 PHP 실행층 분리를 통한 이미지 최적화)</li>
+  <li><b>Web Server:</b> Nginx & PHP-FPM (고성능 리버스 프록시 및 유닉스 소켓 통신 환경 구축)</li>
+  <li><b>Infrastructure:</b> Google Cloud Run, Artifact Registry, Cloud SQL</li>
+  <li><b>DevOps & Security:</b> GitHub Actions (CI/CD 자동화), GCP Secret Manager (환경 변수 보안 격리)</li>
 </ul>
 
 <hr/>
@@ -72,10 +78,17 @@
   <li><b>해결:</b> <code>AppServiceProvider</code> 내 <code>URL::forceScheme('https')</code> 설정을 통한 보안 통신 일관성 유지.</li>
 </ul>
 
+### 4. IAM 권한 기반 Secret Manager 연동
+<ul>
+  <li><b>문제:</b> 환경 변수 보안을 위해 Secret Manager를 도입했으나 런타임 접근 권한 부족으로 500 에러 발생.</li>
+  <li><b>해결:</b> 서비스 계정에 `Secret Manager 보안 비밀 접근자` 역할을 부여하고, `APP_KEY` 등 핵심 변수를 안전하게 주입받도록 구성.</li>
+</ul>
+
 <hr/>
 
 ## 4. 확장 가능성 (Next Step)
 <ul>
-  <li><b>AI 기반 자동 재고 예측:</b> 판매 추이를 Gemini가 분석하여 적정 발주량 제안 기능 추가 예정.</li>
-  <li><b>GitHub Actions CI/CD:</b> 완전 자동화된 빌드/배포 파이프라인 구축.</li>
+  <li><b>AI 기반 자동 재고 예측:</b> 판매 추이를 Gemini가 분석하여 적정 발주량 및 품절 임박 알림 기능 추가 예정.</li>
+  <li><b>테스트 자동화 (TDD) 도입:</b> 배포 전 PHPUnit 테스트를 강제하여 서비스 안정성 극대화.</li>
+  <li><b>멀티 리전 배포:</b> 글로벌 서비스 확장을 위한 GCP 멀티 리전 로드밸런싱 아키텍처 검토.</li>
 </ul>
