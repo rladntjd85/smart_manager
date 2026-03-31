@@ -53,8 +53,8 @@ jobs:
           add_cloudsql_instances: ${{ secrets.GCP_DB_INSTANCE }}
           # 일반 환경 변수 주입
           env_vars: |-
-            QUEUE_CONNECTION=database # 필수 추가
-            SESSION_DRIVER=database   # 세션 공유를 위해 권장
+            QUEUE_CONNECTION=database
+            SESSION_DRIVER=database
             APP_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app
             ASSET_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app
             GOOGLE_CLOUD_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}

@@ -22,8 +22,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         config(['database.connections.mysql.timezone' => '+09:00']);
-
         date_default_timezone_set('Asia/Seoul');
+        set_time_limit(300);
 
         if (app()->environment('production')) {
             // 1. 모든 URL 생성을 HTTPS로 강제

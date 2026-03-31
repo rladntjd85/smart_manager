@@ -39,6 +39,8 @@ class ProductExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
+        set_time_limit(300);
+
         $body = 'Your product export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
