@@ -53,6 +53,8 @@ jobs:
           add_cloudsql_instances: ${{ secrets.GCP_DB_INSTANCE }}
           # 일반 환경 변수 주입
           env_vars: |-
+            QUEUE_CONNECTION=database # 필수 추가
+            SESSION_DRIVER=database   # 세션 공유를 위해 권장
             APP_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app
             ASSET_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app
             GOOGLE_CLOUD_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
@@ -72,3 +74,17 @@ jobs:
             DB_PASSWORD=DB_PASSWORD:latest
             DB_USERNAME=DB_USERNAME:latest
             GEMINI_API_KEY=GEMINI_API_KEY:latest
+
+      # 4. Cloud Run Job 생성 및 업데이트 (Worker 역할)
+      - name: Deploy Worker as Cloud Run Job
+        run: |
+          gcloud run jobs deploy smart-manager-worker-job \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --command "php" \
+            --args "artisan","queue:work","--stop-when-empty" \
+            --set-cloudsql-instances ${{ secrets.GCP_DB_INSTANCE }} \
+            --service-account ${{ secrets.GCP_SERVICE_ACCOUNT }} \
+            --set-env-vars "QUEUE_CONNECTION=database,FILESYSTEM_DISK=gcs,GCP_STORAGE_BUCKET=smart-manager-bucket,DB_CONNECTION=mysql,DB_DATABASE=smart_manager,DB_SOCKET=/cloudsql/${{ secrets.GCP_DB_INSTANCE }},APP_URL=https://smart-manager-server-154955176179.asia-northeast3.run.app" \
+            --set-secrets "APP_KEY=APP_KEY:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_USERNAME=DB_USERNAME:latest"
+
