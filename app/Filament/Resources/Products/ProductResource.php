@@ -171,6 +171,10 @@ class ProductResource extends Resource
 
                                             Notification::make()->title('이미지 분석 성공')->success()->send();
                                         } else {
+                                            \Log::warning("Gemini 분석 실패: 서비스가 빈 값을 반환함.", [
+                                                'file_path' => $fullPath,
+                                                'result_dump' => var_export($result, true), // 실제 어떤 데이터 타입인지 기록
+                                            ]);
                                             Notification::make()->title('분석 결과가 비어있습니다.')->warning()->send();
                                         }
                                     } catch (\Exception $e) {
