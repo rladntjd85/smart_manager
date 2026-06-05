@@ -58,7 +58,7 @@ class ProductAnalysisService
 
         for ($i = 0; $i < $maxRetries; $i++) {
             try {
-                $modelName = 'gemini-2.5-flash-lite';
+                $modelName = 'gemini-3.1-flash-lite';
                 $fullUrl = "{$this->baseUrl}/{$modelName}:generateContent?key={$this->apiKey}";
 
                 // 2. 프롬프트 구성 (요약, 태그, 이미지 매칭 로직 포함)

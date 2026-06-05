@@ -21,7 +21,7 @@ class StatsOverview extends BaseWidget
                 ->url(route('filament.admin.resources.products.index')),
 
             Stat::make('AI 분석 완료', Product::whereNotNull('summary')->count() . ' 건')
-                ->description('Gemini 2.5 Flash Lite 처리')
+                ->description('Gemini 3.1 Flash Lite 처리')
                 ->descriptionIcon('heroicon-m-cpu-chip')
                 ->color('success'),
 
