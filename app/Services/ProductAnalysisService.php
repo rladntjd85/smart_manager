@@ -22,7 +22,8 @@ class ProductAnalysisService
         $projectId = config('services.gcp.project_id');
         $location = config('services.gcp.location');
 
-        $this->baseUrl = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models";
+        // $this->baseUrl = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models";
+        $this->baseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
         $this->apiKey = config('services.gemini.key');
     }
 
@@ -35,7 +36,7 @@ class ProductAnalysisService
     {
         $ipAddress = request()->ip();
         $mode = $imagePath ? 'image' : 'text';
-        $throttleKey = "vertex_ai_{$mode}_limit_" . $ipAddress;
+        $throttleKey = "gemini_api_{$mode}_limit_" . $ipAddress;
 
         if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts = 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
@@ -110,7 +111,7 @@ class ProductAnalysisService
 //                ]);
 
                 if ($response->failed()) {
-                    throw new \Exception('Vertex AI 호출 실패: ' . $response->body());
+                    throw new \Exception('gemini AI 호출 실패: ' . $response->body());
                 }
 
                 // [수정 4] REST API 응답 구조에 맞게 텍스트 추출

@@ -8,7 +8,7 @@ use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Support\Facades\DB;
-use App\Jobs\AnalyzeProductWithVertexAI;
+use App\Jobs\AnalyzeProductWithGeminiAI;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Number;
 
